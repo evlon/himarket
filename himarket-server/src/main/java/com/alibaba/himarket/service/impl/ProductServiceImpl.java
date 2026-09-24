@@ -319,8 +319,13 @@ public class ProductServiceImpl implements ProductService {
 
         productRepository.saveAndFlush(product);
 
-        // Set product categories
-        setProductCategories(product.getProductId(), param.getCategories());
+        // Set product categories only when explicitly provided.
+        // `categories == null` means "partial update without touching categories";
+        // unconditionally rebinding here would wipe existing category relations
+        // (setProductCategories unbinds all first, then binds an empty list -> no-op).
+        if (param.getCategories() != null) {
+            setProductCategories(product.getProductId(), param.getCategories());
+        }
 
         return getProduct(product.getProductId());
     }
