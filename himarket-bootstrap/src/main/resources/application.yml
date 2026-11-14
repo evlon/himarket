@@ -40,6 +40,15 @@ jwt:
   secret: ${JWT_SECRET:YourJWTSecret}
   expiration: 7d
 
+# Gateway-trusted identity headers.
+#
+# When enabled, a request carrying `x-user-username` is authenticated as the
+# developer bound to that identity-provider username, without a HiMarket JWT.
+# Safe only when this server is reachable exclusively through the gateway that
+# injects the header; leave it off wherever the port is exposed directly.
+header-auth:
+  enabled: ${HEADER_AUTH_ENABLED:false}
+
 acp:
   terminal-enabled: ${ACP_TERMINAL_ENABLED:false}
   default-provider: ${ACP_DEFAULT_PROVIDER:qwen-code}
