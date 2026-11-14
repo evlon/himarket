@@ -19,15 +19,18 @@
 
 package com.alibaba.himarket.config;
 
+import com.alibaba.himarket.core.security.HeaderAuthenticationFilter;
 import com.alibaba.himarket.core.security.JwtAuthenticationFilter;
 import com.alibaba.himarket.core.security.PublicAccessPathScanner;
 import com.alibaba.himarket.core.security.PublicAccessPathScanner.PublicAccessEndpoint;
+import com.alibaba.himarket.service.DeveloperService;
 import com.alibaba.himarket.service.TokenService;
 import jakarta.servlet.DispatcherType;
 import java.util.Collections;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -53,6 +56,18 @@ public class SecurityConfig {
     private final PublicAccessPathScanner publicAccessPathScanner;
 
     private final TokenService tokenService;
+
+    private final DeveloperService developerService;
+
+    /**
+     * Whether identity headers from the API gateway are trusted.
+     *
+     * <p>Off by default: enabling it lets the gateway authenticate requests without a HiMarket JWT,
+     * which is only safe when {@code himarket-server} cannot be reached except through that
+     * gateway. A deployment that exposes this port directly must leave it off.
+     */
+    @Value("${header-auth.enabled:false}")
+    private boolean headerAuthEnabled;
 
     // Auth endpoints
     private static final String[] AUTH_WHITELIST = {
@@ -133,6 +148,18 @@ public class SecurityConfig {
                 .addFilterBefore(
                         new JwtAuthenticationFilter(tokenService),
                         UsernamePasswordAuthenticationFilter.class);
+
+        // Gateway-trusted identity headers. Registered after the JWT filter so a request that
+        // carries a valid HiMarket token is authenticated by the JWT filter and the header path
+        // sees a non-null context and stands aside (see HeaderAuthenticationFilter).
+        if (headerAuthEnabled) {
+            log.info("Gateway header authentication is ENABLED (header: x-user-username)");
+            http.addFilterBefore(
+                    new HeaderAuthenticationFilter(developerService),
+                    UsernamePasswordAuthenticationFilter.class);
+        } else {
+            log.info("Gateway header authentication is disabled");
+        }
         return http.build();
     }
 
